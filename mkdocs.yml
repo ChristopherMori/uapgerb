@@ -1,0 +1,18 @@
+site_name: UAPGerb Wiki
+site_url: https://<your-username>.github.io/uapgerb-wiki/
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - search.highlight
+    - search.share
+nav:
+  - Home: index.md
+  - Transcripts: transcripts/index.md
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+plugins:
+  - search
