@@ -8,8 +8,7 @@ theme:
     - search.share
 nav:
   - Home: index.md
-  - Transcripts:
-      - transcripts/
+  - Transcripts: transcripts/index.md
 
 markdown_extensions:
   - admonition
