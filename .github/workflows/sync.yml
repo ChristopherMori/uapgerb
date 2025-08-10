@@ -1,57 +1,32 @@
-name: Sync YouTube Videos
-
+name: Sync and Publish
 on:
   schedule:
-    - cron: '0 * * * *'  # Run every hour
-  workflow_dispatch:  # Allow manual trigger
-  push:
-    branches: [ main ]
-
+    - cron: '7 * * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: sync-and-publish
+  cancel-in-progress: true
 jobs:
-  sync:
+  build:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-        
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        
-    - name: Create necessary directories
-      run: |
-        mkdir -p pages
-        mkdir -p _data
-        
-    - name: Run sync script
-      run: |
-        python scripts/sync.py
-        
-    - name: Build search index
-      run: |
-        python scripts/build_search.py
-        
-    - name: Configure Git
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        
-    - name: Commit and push changes
-      run: |
-        git add .
-        if git diff --staged --quiet; then
-          echo "No changes to commit"
-        else
-          git commit -m "Auto-sync: Update videos and search index $(date)"
-          git push
-        fi
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+          pip install mkdocs mkdocs-material
+      - name: Sync transcripts (all videos)
+        run: python scripts/sync.py
+      - name: Build site
+        run: mkdocs build --strict
+      - name: Publish to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
