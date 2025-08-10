@@ -1,156 +1,110 @@
 #!/usr/bin/env python3
-"""
-Creates/updates a Markdown page for EVERY video on the channel.
-Run locally once or let GitHub Actions call it hourly.
-"""
+import datetime, time, random, re
 from pathlib import Path
 from yt_dlp import YoutubeDL
-try:
-    from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound
-except ImportError:
-    print("Warning: youtube_transcript_api not available")
-    YouTubeTranscriptApi = None
-    NoTranscriptFound = Exception
-import frontmatter, slugify, datetime, os, hashlib, textwrap, json
+from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+import frontmatter, slugify
 
-CHANNEL_URL = "https://www.youtube.com/@UAPGerb"
-PAGES_DIR   = Path("pages")
-PAGES_DIR.mkdir(exist_ok=True)
+HANDLE_OR_URL = "https://www.youtube.com/@UAPGerb"
+OUT_DIR = Path("docs/transcripts")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-TEMPLATE = textwrap.dedent("""\
-    ---
-    title: "{title}"
-    date: {date}
-    video_id: {video_id}
-    duration: "{duration}"
-    tags: [uap, gerb]
-    ---
+def get_channel_id(handle_or_url: str) -> str:
+    with YoutubeDL({'quiet': True, 'extract_flat': True, 'dump_single_json': True}) as ydl:
+        info = ydl.extract_info(handle_or_url, download=False)
+    for k in ("channel_id", "uploader_id", "id"):
+        cid = info.get(k)
+        if cid and cid.startswith("UC"):
+            return cid
+    raise RuntimeError("Could not resolve channel_id")
 
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/{video_id}" allowfullscreen></iframe>
+def list_uploads_entries(channel_id: str):
+    uploads = "UU" + channel_id[2:]
+    url = f"https://www.youtube.com/playlist?list={uploads}"
+    with YoutubeDL({'quiet': True, 'extract_flat': True, 'dump_single_json': True}) as ydl:
+        pl = ydl.extract_info(url, download=False)
+    return pl.get("entries", [])
 
-    ---
+def safe_date(entry):
+    ts = entry.get("timestamp") or entry.get("release_timestamp")
+    if ts:
+        return datetime.datetime.utcfromtimestamp(ts).date()
+    up = entry.get("upload_date")
+    if up and re.fullmatch(r"\d{8}", up):
+        return datetime.datetime.strptime(up, "%Y%m%d").date()
+    return datetime.date.today()
 
-    ## Transcript
-    {body}
-""")
-
-def list_videos():
-    """Fetch all videos from the YouTube channel."""
-    print(f"Fetching videos from {CHANNEL_URL}...")
-    opts = {
-        "quiet": True, 
-        "extract_flat": True, 
-        "dump_single_json": True,
-        "no_warnings": True
-    }
+def best_effort_transcript(video_id: str, prefer_langs=("en",)):
     try:
-        with YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(CHANNEL_URL, download=False)
-        print(f"Found {len(info['entries'])} videos")
-        return info["entries"]
-    except Exception as e:
-        print(f"Error fetching videos: {e}")
-        return []
+        lst = YouTubeTranscriptApi.list_transcripts(video_id)
+        try:
+            t = lst.find_manually_created_transcript(prefer_langs)
+            return "\n\n".join(seg["text"] for seg in t.fetch())
+        except Exception:
+            pass
+        try:
+            t = lst.find_generated_transcript(prefer_langs)
+            return "\n\n".join(seg["text"] for seg in t.fetch())
+        except Exception:
+            pass
+        for t in lst:
+            try:
+                en = t.translate("en")
+                return "\n\n".join(seg["text"] for seg in en.fetch())
+            except Exception:
+                continue
+    except (TranscriptsDisabled, NoTranscriptFound):
+        return "*No transcript available yet*"
+    except Exception:
+        for i in range(3):
+            try:
+                time.sleep((2 ** i) + random.random())
+                segs = YouTubeTranscriptApi.get_transcript(video_id, languages=list(prefer_langs))
+                return "\n\n".join(seg["text"] for seg in segs)
+            except Exception:
+                continue
+        return "*Transcript fetch error – will retry later*"
 
-def safe_slug(s):
-    """Create a safe filename slug from a string."""
-    return slugify.slugify(s, lowercase=True)[:60]
+def write_page(entry) -> bool:
+    vid   = entry["id"]
+    title = entry.get("title") or vid
+    date  = safe_date(entry)
+    slug  = f"{date}--{slugify.slugify(title, lowercase=True)[:60]}--{vid}.md"
+    path  = OUT_DIR / slug
 
-def format_duration(seconds):
-    """Format duration in seconds to HH:MM:SS format."""
-    if not seconds:
-        return "unknown"
-    return str(datetime.timedelta(seconds=int(seconds)))
+    body = best_effort_transcript(vid)
 
-def write_page(entry):
-    """Write a markdown page for a single video."""
-    vid = entry["id"]
-    
-    # Handle timestamp - could be in different formats
-    try:
-        if "timestamp" in entry and entry["timestamp"]:
-            date = datetime.datetime.fromtimestamp(entry["timestamp"]).date()
-        elif "upload_date" in entry and entry["upload_date"]:
-            date = datetime.datetime.strptime(entry["upload_date"], "%Y%m%d").date()
-        else:
-            date = datetime.date.today()
-    except (ValueError, TypeError):
-        date = datetime.date.today()
-    
-    title = entry.get("title", "Untitled Video")
-    duration = entry.get("duration", 0)
-    
-    # Create filename
-    slug = f"{date}--{safe_slug(title)}--{vid}.md"
-    path = PAGES_DIR / slug
+    post = frontmatter.Post(
+        f"""<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/{vid}\" allowfullscreen></iframe>
 
-    # Fetch transcript
-    print(f"Processing: {title}")
-    try:
-        if YouTubeTranscriptApi is None:
-            body = "*Transcript API not available.*"
-            print(f"  ⚠ Transcript API not available")
-        else:
-            api = YouTubeTranscriptApi()
-            segs = api.fetch(vid)
-            body = "\n\n".join(seg["text"] for seg in segs)
-            print(f"  ✓ Transcript found ({len(segs)} segments)")
-    except NoTranscriptFound:
-        body = "*No transcript available for this video.*"
-        print(f"  ⚠ No transcript available")
-    except Exception as e:
-        body = f"*Error fetching transcript: {str(e)}*"
-        print(f"  ✗ Transcript error: {e}")
+---
 
-    # Generate markdown content
-    md = TEMPLATE.format(
-        title=title.replace('"', '\\"'),
-        date=date,
-        video_id=vid,
-        duration=format_duration(duration),
-        body=body
+## Transcript
+{body}
+""",
+        **{
+            "title": title,
+            "date": str(date),
+            "video_id": vid,
+            "tags": ["uap", "gerb"]
+        }
     )
-
-    # Check if content has changed (avoid unnecessary writes)
-    new_hash = hashlib.sha1(md.encode()).hexdigest()
-    if path.exists():
-        existing_hash = hashlib.sha1(path.read_bytes()).hexdigest()
-        if existing_hash == new_hash:
-            print(f"  → No changes")
-            return False  # no change
-
-    # Write the file
-    path.write_text(md, encoding="utf-8")
-    print(f"  ✓ Page updated: {slug}")
+    new_text = frontmatter.dumps(post)
+    if path.exists() and path.read_text(encoding="utf-8") == new_text:
+        return False
+    path.write_text(new_text, encoding="utf-8")
+    print("Saved", path.name)
     return True
 
 def main():
-    """Main synchronization function."""
-    print("Starting YouTube channel sync...")
-    
-    videos = list_videos()
-    if not videos:
-        print("No videos found or error occurred")
-        return
-    
+    cid = get_channel_id(HANDLE_OR_URL)
+    entries = list_uploads_entries(cid)
     changed = False
-    processed = 0
-    
-    for entry in videos:
-        try:
-            if write_page(entry):
-                changed = True
-            processed += 1
-        except Exception as e:
-            print(f"Error processing video {entry.get('id', 'unknown')}: {e}")
+    for e in entries:
+        if not e.get("id") or e.get("_type") == "url":
             continue
-    
-    print(f"\nProcessed {processed} videos")
-    if changed:
-        print("✓ Wiki updated with new content")
-    else:
-        print("✨ No changes needed")
+        changed |= write_page(e)
+    print("Done. Changed =", changed)
 
 if __name__ == "__main__":
     main()
-
