@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import datetime, time, random, re
 from pathlib import Path
 from typing import Any, Sequence
@@ -12,9 +13,8 @@ from youtube_transcript_api import (  # type: ignore[import-untyped]
     YouTubeTranscriptApi,
 )
 
-HANDLE_OR_URL = "https://www.youtube.com/@UAPGerb"
-OUT_DIR = Path("docs/transcripts")
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_CHANNEL = "https://www.youtube.com/@UAPGerb"
+DEFAULT_OUT_DIR = Path("docs/transcripts")
 
 def get_channel_id(handle_or_url: str) -> str:
     """Resolve a channel handle or URL to a channel ID.
@@ -160,6 +160,7 @@ def write_page(entry: dict[str, Any]) -> bool:
     slug = f"{date}--{slugify.slugify(title, lowercase=True)[:60]}--{vid}.md"
     path = OUT_DIR / slug
 
+
     body = best_effort_transcript(vid)
 
     post = frontmatter.Post(
@@ -188,13 +189,17 @@ def main() -> None:
     """Synchronise transcripts for the configured YouTube channel."""
 
     cid = get_channel_id(HANDLE_OR_URL)
-    entries = list_uploads_entries(cid)
-    changed = False
-    for e in entries:
-        if not e.get("id") or e.get("_type") == "url":
-            continue
-        changed |= write_page(e)
-    print("Done. Changed =", changed)
+=======
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--channel", default=DEFAULT_CHANNEL, help="YouTube channel handle or URL")
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUT_DIR, help="Directory to store transcripts")
+    parser.add_argument("--max-videos", type=int, default=None, help="Maximum number of videos to sync")
+    return parser.parse_args()
 
-if __name__ == "__main__":
-    main()
+def main():
+    args = parse_args()
+    out_dir = args.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    cid = get_channel_id(args.channel)
