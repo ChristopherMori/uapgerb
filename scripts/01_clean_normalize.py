@@ -36,6 +36,11 @@ def load_segments(raw_file: Path) -> List[Dict[str, float | str]]:
     elif ext == ".json":
         data = json.loads(raw_file.read_text())
         for item in data:
+            # Some transcripts may contain stray strings or other non-dict
+            # entries. Skip any item that does not provide the expected
+            # mapping interface to avoid AttributeError when calling `.get`.
+            if not isinstance(item, dict):
+                continue
             start = float(item.get("start", 0))
             dur = float(item.get("duration", 0))
             segments.append({"start": start, "end": start + dur, "text": item.get("text", "")})
