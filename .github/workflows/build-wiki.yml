@@ -1,7 +1,7 @@
 ---
 name: Build and publish wiki
 
-on:
+"on":
   push:
     branches: [main]
     paths:
@@ -34,11 +34,13 @@ jobs:
         run: make all
       - name: Publish to wiki
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git clone https://x-access-token:${{ secrets.WIKI_PUSH_SECRET }}@github.com/${{ github.repository }}.wiki.git wiki_tmp
+          REPO_URL="https://x-access-token:${{ secrets.WIKI_PUSH_SECRET }}@github.com/${{ github.repository }}.wiki.git"
+          git clone "$REPO_URL" wiki_tmp
           rsync -a wiki_out/ wiki_tmp/
           cd wiki_tmp
+          git config user.name github-actions
+          git config user.email github-actions@github.com
           git add .
-          git commit -m "Update transcript pages with embeds and stats" || echo "No changes to commit"
+          git commit -m "Update transcript pages with embeds and stats" || \
+            echo "No changes to commit"
           git push
