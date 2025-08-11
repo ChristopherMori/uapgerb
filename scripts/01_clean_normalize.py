@@ -54,6 +54,10 @@ def load_segments(raw_file: Path) -> List[Dict[str, float | str]]:
                 except (TypeError, ValueError):
                     continue
                 segments.append({"start": start, "end": end, "text": row.get("text", "")})
+    elif ext == ".txt":
+        with raw_file.open() as f:
+            for line in f:
+                segments.append({"start": 0.0, "end": 0.0, "text": line.strip()})
     else:
         raise ValueError(f"Unsupported extension: {raw_file}")
     return segments
