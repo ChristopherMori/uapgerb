@@ -1,9 +1,9 @@
 PY=python
+NLTK_PACKAGES=punkt stopwords wordnet vader_lexicon
 
 setup:
 	$(PY) -m pip install -r requirements.txt
-	$(PY) -m nltk.downloader punkt
-	$(PY) -m nltk.downloader vader_lexicon
+	$(PY) -m nltk.downloader $(NLTK_PACKAGES)
 	$(PY) -m spacy download en_core_web_sm
 
 reorg:
