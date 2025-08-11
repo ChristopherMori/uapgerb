@@ -1,8 +1,3 @@
-**TLDR**
-You pulled every UAP Gerb video’s audio with `yt‑dlp`, transcribed locally using Whisper on your GPU, and saved research‑friendly artifacts (.txt, .srt, .vtt, optional word‑level JSON) alongside a metadata catalog (CSV/JSON) and an HTML report of the whole channel. This README documents the why, what, and how so anyone can reproduce or audit the pipeline end‑to‑end. The collection currently contains **43 videos** and a structured record for each (title, URL, video\_id, embed, etc.).   The JSON/CSV schema mirrors those fields for programmatic work.&#x20;
-
----
-
 # UAP Gerb Transcripts – Methods, Provenance, and Files
 
 ## Scope & Purpose
