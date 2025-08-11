@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import re
 from pathlib import Path
 from typing import Dict
@@ -21,34 +20,59 @@ def page_content(entry: Dict) -> str:
     vid = entry["video_id"]
     html_embed = entry.get("html_embed", "")
     url = entry.get("url", f"https://www.youtube.com/watch?v={vid}")
-    lines = [f"# {entry.get('title', vid)}", "", html_embed, "",
-             f"[![Watch on YouTube](https://img.youtube.com/vi/{vid}/0.jpg)]({url})", "",
-             f"**YouTube:** {url}", "",
-             "## TL;DR", "- Summary coming soon.", "",
-             "## Statistics",
-             f"- Duration covered: {to_hms(float(entry.get('duration_covered',0)))}",
-             f"- Words: {entry.get('words','0')} · WPM: {entry.get('wpm','0')} · FK Grade: {entry.get('fk_grade','0')}",
-             f"- Sentences: {entry.get('sentences','0')} · Questions: {entry.get('questions_count','0')}",
-             f"- Hedges: {entry.get('hedge_terms_count','0')} · Uncertainty: {entry.get('uncertainty_markers_count','0')}",
-             "",
-             "## Entities",
-             f"- **People:** {', '.join(entry.get('people', []))}",
-             f"- **Organizations:** {', '.join(entry.get('orgs', []))}",
-             f"- **Places:** {', '.join(entry.get('places', []))}",
-             "",
-             "## Timeline (Referenced)",
-             f"- {', '.join(str(y) for y in entry.get('years', []))}"
-             + (f" (earliest: {entry.get('earliest')})" if entry.get('earliest') else "")
-             + (f" (latest: {entry.get('latest')})" if entry.get('latest') else ""),
-             "",
-             "## Top Keywords",
-             ', '.join(entry.get('keywords_top', [])),
-             "",
-             "## Files",
-             f"- Clean transcript: `transcripts/{vid}/{vid}.clean.md`",
-             f"- Timecoded transcript: `transcripts/{vid}/{vid}.timecoded.md`",
-             f"- Segments (CSV): `transcripts/{vid}/{vid}.segments.csv`",
-             ""]
+    transcript_clean = Path(f"transcripts/{vid}/{vid}.clean.md")
+    transcript_section: list[str]
+    if transcript_clean.exists():
+        transcript_text = transcript_clean.read_text()
+        transcript_section = [
+            "## Transcript",
+            "<details><summary>Show transcript</summary>",
+            "",
+            transcript_text,
+            "",
+            "</details>",
+            "",
+        ]
+    else:
+        transcript_section = ["## Transcript", "Transcript not available.", ""]
+
+    lines = [
+        f"# {entry.get('title', vid)}",
+        "",
+        "[[_TOC_]]",
+        "",
+        html_embed,
+        "",
+        f"[![Watch on YouTube](https://img.youtube.com/vi/{vid}/0.jpg)]({url})",
+        "",
+        f"**YouTube:** {url}",
+        "",
+        "## TL;DR", "- Summary coming soon.", "",
+        "## Statistics",
+        f"- Duration covered: {to_hms(float(entry.get('duration_covered',0)))}",
+        f"- Words: {entry.get('words','0')} · WPM: {entry.get('wpm','0')} · FK Grade: {entry.get('fk_grade','0')}",
+        f"- Sentences: {entry.get('sentences','0')} · Questions: {entry.get('questions_count','0')}",
+        f"- Hedges: {entry.get('hedge_terms_count','0')} · Uncertainty: {entry.get('uncertainty_markers_count','0')}",
+        "",
+        "## Entities",
+        f"- **People:** {', '.join(entry.get('people', []))}",
+        f"- **Organizations:** {', '.join(entry.get('orgs', []))}",
+        f"- **Places:** {', '.join(entry.get('places', []))}",
+        "",
+        "## Timeline (Referenced)",
+        f"- {', '.join(str(y) for y in entry.get('years', []))}"
+        + (f" (earliest: {entry.get('earliest')})" if entry.get('earliest') else "")
+        + (f" (latest: {entry.get('latest')})" if entry.get('latest') else ""),
+        "",
+        "## Top Keywords",
+        ', '.join(entry.get('keywords_top', [])),
+        "",
+        "## Files",
+        f"- Clean transcript: `transcripts/{vid}/{vid}.clean.md`",
+        f"- Timecoded transcript: `transcripts/{vid}/{vid}.timecoded.md`",
+        f"- Segments (CSV): `transcripts/{vid}/{vid}.segments.csv`",
+        "",
+        *transcript_section]
     return "\n".join(lines)
 
 
