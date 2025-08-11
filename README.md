@@ -262,7 +262,3 @@ Get-ChildItem audio\*.m4a | ForEach-Object {
 
 * **Channel‑wide HTML report** (43 items, embed codes): used to confirm video count and provide human‑readable linking.&#x20;
 * **Complete JSON catalog** (schema and fields): used as the programmatic map for `video_id`‑to‑file mapping and downstream joins.&#x20;
-
----
-
-If you want, I can drop this into a `README.md` with a tidy file tree and add a tiny script to verify that every `video_id` in the catalog has a matching transcript and subtitle.
