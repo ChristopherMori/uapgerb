@@ -1,0 +1,7 @@
+nltk
+spacy
+webvtt-py
+pysrt
+textstat
+pandas
+scikit-learn
