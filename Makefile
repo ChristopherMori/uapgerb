@@ -1,5 +1,9 @@
 PY=python
-NLTK_PACKAGES=punkt stopwords wordnet vader_lexicon
+# Include all NLTK data packages required by the pipeline
+# NLTK 3.9 splits tokenizers into the `punkt` model and `punkt_tab` tables,
+# so both resources need to be downloaded to avoid LookupError during
+# tokenization.
+NLTK_PACKAGES=punkt punkt_tab stopwords wordnet vader_lexicon
 
 setup:
 	$(PY) -m pip install -r requirements.txt

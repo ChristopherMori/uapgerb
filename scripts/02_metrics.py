@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 from statistics import mean, pstdev
 
@@ -13,6 +14,9 @@ from nltk.sentiment import SentimentIntensityAnalyzer
 import textstat
 
 from utils.text_helpers import HEDGE_TERMS, UNCERTAINTY_TERMS, count_terms
+
+# Allow very long CSV fields such as transcript segments
+csv.field_size_limit(sys.maxsize)
 
 
 def analyze(video_id: str, folder: Path) -> dict:
@@ -91,5 +95,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     nltk.download('punkt', quiet=True)
+    nltk.download('punkt_tab', quiet=True)
     nltk.download('vader_lexicon', quiet=True)
     main()
