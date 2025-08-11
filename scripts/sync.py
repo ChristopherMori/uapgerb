@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-import argparse
-import datetime, time, random, re
+import datetime, logging, random, re, time
+from functools import partial
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Callable
 
-import frontmatter  # type: ignore[import-untyped]
-import slugify  # type: ignore[import-untyped]
-from yt_dlp import YoutubeDL  # type: ignore[import-untyped]
-from youtube_transcript_api import (  # type: ignore[import-untyped]
+from yt_dlp import YoutubeDL
+from youtube_transcript_api import (
     NoTranscriptFound,
     TranscriptsDisabled,
     YouTubeTranscriptApi,
 )
+import frontmatter, slugify
 
-DEFAULT_CHANNEL = "https://www.youtube.com/@UAPGerb"
-DEFAULT_OUT_DIR = Path("docs/transcripts")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+HANDLE_OR_URL = "https://www.youtube.com/@UAPGerb"
+OUT_DIR = Path("docs/transcripts")
+OUT_DIR.mkdir(parents=True, exist_ok=True)
+
 
 def get_channel_id(handle_or_url: str) -> str:
     """Resolve a channel handle or URL to a channel ID.
@@ -86,57 +90,92 @@ def safe_date(entry: dict[str, Any]) -> datetime.date:
         return datetime.datetime.strptime(up, "%Y%m%d").date()
     return datetime.date.today()
 
-def best_effort_transcript(video_id: str, prefer_langs: Sequence[str] = ("en",)) -> str:
-    """Retrieve the transcript for a video, trying several strategies.
 
-    The function first attempts to fetch a manually created transcript,
-    then a generated one. If neither are available, it attempts to
-    translate any transcript to English. As a final fallback it retries
-    direct fetching a few times with exponential backoff.
+def _join_segments(segs):
+    return "\n\n".join(seg["text"] for seg in segs)
 
-    Parameters
-    ----------
-    video_id:
-        The ID of the YouTube video.
-    prefer_langs:
-        Preferred languages ordered by priority.
 
-    Returns
-    -------
-    str
-        The concatenated transcript text or an informative placeholder
-        on failure.
-    """
+def _fetch_manual(lst, langs):
+    t = lst.find_manually_created_transcript(langs)
+    return _join_segments(t.fetch())
+
+
+def _fetch_generated(lst, langs):
+    t = lst.find_generated_transcript(langs)
+    return _join_segments(t.fetch())
+
+
+def _fetch_translation(lst, _):
+    for t in lst:
+        try:
+            en = t.translate("en")
+            return _join_segments(en.fetch())
+        except Exception:
+            continue
+    raise NoTranscriptFound()
+
+
+def _fetch_api_transcript(video_id: str, langs):
+    return _join_segments(
+        YouTubeTranscriptApi.get_transcript(video_id, languages=list(langs))
+    )
+
+
+def _fetch_with_retry(fn: Callable[[], str], retries: int = 3):
+    last_exc = None
+    for i in range(retries):
+        try:
+            return fn()
+        except (TranscriptsDisabled, NoTranscriptFound):
+            raise
+        except Exception as e:
+            last_exc = e
+            logger.warning("Transcript fetch attempt %d failed: %s", i + 1, e)
+            time.sleep((2 ** i) + random.random())
+    raise last_exc
+
+
+def best_effort_transcript(video_id: str, prefer_langs=("en",)):
+    try:
+        lst = YouTubeTranscriptApi.list_transcripts(video_id)
+    except (TranscriptsDisabled, NoTranscriptFound):
+        logger.info("No transcripts for %s", video_id)
+        return "*No transcript available yet*"
+    except Exception as e:
+        logger.warning("Listing transcripts failed for %s: %s", video_id, e)
+
+        try:
+            return _fetch_with_retry(partial(_fetch_api_transcript, video_id, prefer_langs))
+        except (TranscriptsDisabled, NoTranscriptFound):
+            logger.info("No transcripts for %s", video_id)
+            return "*No transcript available yet*"
+        except Exception as e2:
+            logger.error("Retries failed for %s: %s", video_id, e2)
+            return "*Transcript fetch error – will retry later*"
+
+    strategies = [
+        ("manual", partial(_fetch_manual, lst, prefer_langs)),
+        ("generated", partial(_fetch_generated, lst, prefer_langs)),
+        ("translation", partial(_fetch_translation, lst, prefer_langs)),
+    ]
+
+    for name, strat in strategies:
+        try:
+          return _fetch_with_retry(strat)
+        except (NoTranscriptFound, TranscriptsDisabled):
+            continue
+        except Exception as e:
+            logger.info("Strategy %s failed for %s: %s", name, video_id, e)
 
     try:
-        lst = YouTubeTranscriptApi.list_transcripts(video_id)  # type: ignore[attr-defined]
-        try:
-            t = lst.find_manually_created_transcript(prefer_langs)
-            return "\n\n".join(seg["text"] for seg in t.fetch())
-        except Exception:
-            pass
-        try:
-            t = lst.find_generated_transcript(prefer_langs)
-            return "\n\n".join(seg["text"] for seg in t.fetch())
-        except Exception:
-            pass
-        for t in lst:
-            try:
-                en = t.translate("en")
-                return "\n\n".join(seg["text"] for seg in en.fetch())
-            except Exception:
-                continue
-        return "*No transcript available yet*"
+        return _fetch_with_retry(partial(_fetch_api_transcript, video_id, prefer_langs))
+
     except (TranscriptsDisabled, NoTranscriptFound):
+        logger.info("No transcripts for %s", video_id)
         return "*No transcript available yet*"
-    except Exception:
-        for i in range(3):
-            try:
-                time.sleep((2 ** i) + random.random())
-                segs = YouTubeTranscriptApi.get_transcript(video_id, languages=list(prefer_langs))  # type: ignore[attr-defined]
-                return "\n\n".join(seg["text"] for seg in segs)
-            except Exception:
-                continue
+    except Exception as e:
+        logger.error("Retries failed for %s: %s", video_id, e)
+
         return "*Transcript fetch error – will retry later*"
 
 def write_page(entry: dict[str, Any]) -> bool:
@@ -189,7 +228,6 @@ def main() -> None:
     """Synchronise transcripts for the configured YouTube channel."""
 
     cid = get_channel_id(HANDLE_OR_URL)
-=======
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--channel", default=DEFAULT_CHANNEL, help="YouTube channel handle or URL")
