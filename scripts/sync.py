@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
-import datetime, time, random, re
+import datetime, logging, random, re, time
+from functools import partial
 from pathlib import Path
+from typing import Callable
+
 from yt_dlp import YoutubeDL
-from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
+from youtube_transcript_api import (
+    NoTranscriptFound,
+    TranscriptsDisabled,
+    YouTubeTranscriptApi,
+)
 import frontmatter, slugify
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 HANDLE_OR_URL = "https://www.youtube.com/@UAPGerb"
 OUT_DIR = Path("docs/transcripts")
@@ -34,35 +44,89 @@ def safe_date(entry):
         return datetime.datetime.strptime(up, "%Y%m%d").date()
     return datetime.date.today()
 
+
+def _join_segments(segs):
+    return "\n\n".join(seg["text"] for seg in segs)
+
+
+def _fetch_manual(lst, langs):
+    t = lst.find_manually_created_transcript(langs)
+    return _join_segments(t.fetch())
+
+
+def _fetch_generated(lst, langs):
+    t = lst.find_generated_transcript(langs)
+    return _join_segments(t.fetch())
+
+
+def _fetch_translation(lst, _):
+    for t in lst:
+        try:
+            en = t.translate("en")
+            return _join_segments(en.fetch())
+        except Exception:
+            continue
+    raise NoTranscriptFound()
+
+
+def _fetch_api_transcript(video_id: str, langs):
+    return _join_segments(
+        YouTubeTranscriptApi.get_transcript(video_id, languages=list(langs))
+    )
+
+
+def _fetch_with_retry(fn: Callable[[], str], retries: int = 3):
+    last_exc = None
+    for i in range(retries):
+        try:
+            return fn()
+        except (TranscriptsDisabled, NoTranscriptFound):
+            raise
+        except Exception as e:
+            last_exc = e
+            logger.warning("Transcript fetch attempt %d failed: %s", i + 1, e)
+            time.sleep((2 ** i) + random.random())
+    raise last_exc
+
+
 def best_effort_transcript(video_id: str, prefer_langs=("en",)):
     try:
         lst = YouTubeTranscriptApi.list_transcripts(video_id)
-        try:
-            t = lst.find_manually_created_transcript(prefer_langs)
-            return "\n\n".join(seg["text"] for seg in t.fetch())
-        except Exception:
-            pass
-        try:
-            t = lst.find_generated_transcript(prefer_langs)
-            return "\n\n".join(seg["text"] for seg in t.fetch())
-        except Exception:
-            pass
-        for t in lst:
-            try:
-                en = t.translate("en")
-                return "\n\n".join(seg["text"] for seg in en.fetch())
-            except Exception:
-                continue
     except (TranscriptsDisabled, NoTranscriptFound):
+        logger.info("No transcripts for %s", video_id)
         return "*No transcript available yet*"
-    except Exception:
-        for i in range(3):
-            try:
-                time.sleep((2 ** i) + random.random())
-                segs = YouTubeTranscriptApi.get_transcript(video_id, languages=list(prefer_langs))
-                return "\n\n".join(seg["text"] for seg in segs)
-            except Exception:
-                continue
+    except Exception as e:
+        logger.warning("Listing transcripts failed for %s: %s", video_id, e)
+        try:
+            return _fetch_with_retry(partial(_fetch_api_transcript, video_id, prefer_langs))
+        except (TranscriptsDisabled, NoTranscriptFound):
+            logger.info("No transcripts for %s", video_id)
+            return "*No transcript available yet*"
+        except Exception as e2:
+            logger.error("Retries failed for %s: %s", video_id, e2)
+            return "*Transcript fetch error – will retry later*"
+
+    strategies = [
+        ("manual", partial(_fetch_manual, lst, prefer_langs)),
+        ("generated", partial(_fetch_generated, lst, prefer_langs)),
+        ("translation", partial(_fetch_translation, lst, prefer_langs)),
+    ]
+
+    for name, strat in strategies:
+        try:
+            return _fetch_with_retry(strat)
+        except (NoTranscriptFound, TranscriptsDisabled):
+            continue
+        except Exception as e:
+            logger.info("Strategy %s failed for %s: %s", name, video_id, e)
+
+    try:
+        return _fetch_with_retry(partial(_fetch_api_transcript, video_id, prefer_langs))
+    except (TranscriptsDisabled, NoTranscriptFound):
+        logger.info("No transcripts for %s", video_id)
+        return "*No transcript available yet*"
+    except Exception as e:
+        logger.error("Retries failed for %s: %s", video_id, e)
         return "*Transcript fetch error – will retry later*"
 
 def write_page(entry) -> bool:
