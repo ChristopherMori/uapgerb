@@ -19,28 +19,74 @@ HANDLE_OR_URL = "https://www.youtube.com/@UAPGerb"
 OUT_DIR = Path("docs/transcripts")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+
 def get_channel_id(handle_or_url: str) -> str:
-    with YoutubeDL({'quiet': True, 'extract_flat': True, 'dump_single_json': True}) as ydl:
+    """Resolve a channel handle or URL to a channel ID.
+
+    Parameters
+    ----------
+    handle_or_url:
+        The YouTube handle (e.g., ``"@user"``) or full channel URL.
+
+    Returns
+    -------
+    str
+        The channel ID starting with ``"UC"``.
+
+    Raises
+    ------
+    RuntimeError
+        If no channel ID could be found in the response.
+    """
+
+    with YoutubeDL({"quiet": True, "extract_flat": True, "dump_single_json": True}) as ydl:
         info = ydl.extract_info(handle_or_url, download=False)
     for k in ("channel_id", "uploader_id", "id"):
         cid = info.get(k)
-        if cid and cid.startswith("UC"):
+        if isinstance(cid, str) and cid.startswith("UC"):
             return cid
     raise RuntimeError("Could not resolve channel_id")
 
-def list_uploads_entries(channel_id: str):
+def list_uploads_entries(channel_id: str) -> list[dict[str, Any]]:
+    """Return entries for the uploads playlist of a channel.
+
+    Parameters
+    ----------
+    channel_id:
+        The ID of the channel whose uploads playlist should be queried.
+
+    Returns
+    -------
+    list[dict[str, Any]]
+        A list of entry dictionaries as returned by ``yt_dlp``.
+    """
+
     uploads = "UU" + channel_id[2:]
     url = f"https://www.youtube.com/playlist?list={uploads}"
-    with YoutubeDL({'quiet': True, 'extract_flat': True, 'dump_single_json': True}) as ydl:
+    with YoutubeDL({"quiet": True, "extract_flat": True, "dump_single_json": True}) as ydl:
         pl = ydl.extract_info(url, download=False)
-    return pl.get("entries", [])
+    entries = pl.get("entries", [])
+    return entries if isinstance(entries, list) else []
 
-def safe_date(entry):
+def safe_date(entry: dict[str, Any]) -> datetime.date:
+    """Extract the best available upload date from a playlist entry.
+
+    Parameters
+    ----------
+    entry:
+        The entry dictionary returned by ``yt_dlp``.
+
+    Returns
+    -------
+    datetime.date
+        The parsed date, falling back to today when unavailable.
+    """
+
     ts = entry.get("timestamp") or entry.get("release_timestamp")
-    if ts:
+    if isinstance(ts, int):
         return datetime.datetime.utcfromtimestamp(ts).date()
     up = entry.get("upload_date")
-    if up and re.fullmatch(r"\d{8}", up):
+    if isinstance(up, str) and re.fullmatch(r"\d{8}", up):
         return datetime.datetime.strptime(up, "%Y%m%d").date()
     return datetime.date.today()
 
@@ -97,6 +143,7 @@ def best_effort_transcript(video_id: str, prefer_langs=("en",)):
         return "*No transcript available yet*"
     except Exception as e:
         logger.warning("Listing transcripts failed for %s: %s", video_id, e)
+
         try:
             return _fetch_with_retry(partial(_fetch_api_transcript, video_id, prefer_langs))
         except (TranscriptsDisabled, NoTranscriptFound):
@@ -114,7 +161,7 @@ def best_effort_transcript(video_id: str, prefer_langs=("en",)):
 
     for name, strat in strategies:
         try:
-            return _fetch_with_retry(strat)
+          return _fetch_with_retry(strat)
         except (NoTranscriptFound, TranscriptsDisabled):
             continue
         except Exception as e:
@@ -122,19 +169,36 @@ def best_effort_transcript(video_id: str, prefer_langs=("en",)):
 
     try:
         return _fetch_with_retry(partial(_fetch_api_transcript, video_id, prefer_langs))
+
     except (TranscriptsDisabled, NoTranscriptFound):
         logger.info("No transcripts for %s", video_id)
         return "*No transcript available yet*"
     except Exception as e:
         logger.error("Retries failed for %s: %s", video_id, e)
+
         return "*Transcript fetch error – will retry later*"
 
-def write_page(entry) -> bool:
-    vid   = entry["id"]
+def write_page(entry: dict[str, Any]) -> bool:
+    """Create or update a transcript page for a single video entry.
+
+    Parameters
+    ----------
+    entry:
+        The playlist entry containing video metadata.
+
+    Returns
+    -------
+    bool
+        ``True`` if a new file was written or an existing one updated,
+        ``False`` if the existing file was unchanged.
+    """
+
+    vid = entry["id"]
     title = entry.get("title") or vid
-    date  = safe_date(entry)
-    slug  = f"{date}--{slugify.slugify(title, lowercase=True)[:60]}--{vid}.md"
-    path  = OUT_DIR / slug
+    date = safe_date(entry)
+    slug = f"{date}--{slugify.slugify(title, lowercase=True)[:60]}--{vid}.md"
+    path = OUT_DIR / slug
+
 
     body = best_effort_transcript(vid)
 
@@ -150,8 +214,8 @@ def write_page(entry) -> bool:
             "title": title,
             "date": str(date),
             "video_id": vid,
-            "tags": ["uap", "gerb"]
-        }
+            "tags": ["uap", "gerb"],
+        },
     )
     new_text = frontmatter.dumps(post)
     if path.exists() and path.read_text(encoding="utf-8") == new_text:
@@ -160,15 +224,20 @@ def write_page(entry) -> bool:
     print("Saved", path.name)
     return True
 
-def main():
-    cid = get_channel_id(HANDLE_OR_URL)
-    entries = list_uploads_entries(cid)
-    changed = False
-    for e in entries:
-        if not e.get("id") or e.get("_type") == "url":
-            continue
-        changed |= write_page(e)
-    print("Done. Changed =", changed)
+def main() -> None:
+    """Synchronise transcripts for the configured YouTube channel."""
 
-if __name__ == "__main__":
-    main()
+    cid = get_channel_id(HANDLE_OR_URL)
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--channel", default=DEFAULT_CHANNEL, help="YouTube channel handle or URL")
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUT_DIR, help="Directory to store transcripts")
+    parser.add_argument("--max-videos", type=int, default=None, help="Maximum number of videos to sync")
+    return parser.parse_args()
+
+def main():
+    args = parse_args()
+    out_dir = args.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    cid = get_channel_id(args.channel)
