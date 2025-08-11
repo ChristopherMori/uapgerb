@@ -134,7 +134,7 @@ def page_content(entry: Dict, entity_map: Dict[str, Dict[str, List[Dict]]], topi
 
 
 def build_entity_pages(entity_map: Dict[str, Dict[str, List[Dict]]], topic_map: Dict[str, List[Dict]], out_dir: Path,
-                       name_map: Dict[str, str], title_map: Dict[str, str]) -> None:
+                       name_map: Dict[str, str], title_map: Dict[str, str]) -> List[str]:
     base = out_dir / "entities"
     for kind, mapping in entity_map.items():
         kind_dir = base / kind
@@ -149,14 +149,24 @@ def build_entity_pages(entity_map: Dict[str, Dict[str, List[Dict]]], topic_map: 
             (kind_dir / f"{safe_name(name)}.md").write_text("\n".join(lines) + "\n")
 
     topics_dir = out_dir / "topics"
+    topic_names: List[str] = []
     if topic_map:
         topics_dir.mkdir(parents=True, exist_ok=True)
-    for kw, entries in topic_map.items():
+    for kw, entries in sorted(topic_map.items()):
+        topic_names.append(kw)
         lines = [f"# {kw}", "", "Referenced in:", ""]
         for e in sorted(entries, key=lambda x: x.get("title", x["video_id"])):
             vid = e["video_id"]
             lines.append(f"- [{title_map.get(vid, vid)}]({name_map[vid]})")
         (topics_dir / f"{safe_name(kw)}.md").write_text("\n".join(lines) + "\n")
+
+    if topic_names:
+        index_lines = ["# Topics", "", "List of keywords:", ""]
+        for kw in sorted(topic_names):
+            index_lines.append(f"- [{kw}](topics/{safe_name(kw)})")
+        (out_dir / "Topics.md").write_text("\n".join(index_lines) + "\n")
+
+    return topic_names
 
 
 def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
@@ -188,7 +198,7 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
         page_file.write_text(content)
         rows.append(entry)
 
-    build_entity_pages(entity_map, topic_map, out_dir, name_map, title_map)
+    topic_names = build_entity_pages(entity_map, topic_map, out_dir, name_map, title_map)
 
     rows.sort(key=lambda x: x.get("title", ""))
     home_lines = [
@@ -213,6 +223,10 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
         title = r.get("title", r["video_id"])
         filename = name_map[r["video_id"]]
         sidebar_lines.append(f"- [{title}]({filename})")
+    if topic_names:
+        sidebar_lines.extend(["", "## Topics", ""])
+        for kw in sorted(topic_names):
+            sidebar_lines.append(f"- [{kw}](topics/{safe_name(kw)})")
     sidebar_lines.append("")
     (out_dir / "_Sidebar.md").write_text("\n".join(sidebar_lines))
 
