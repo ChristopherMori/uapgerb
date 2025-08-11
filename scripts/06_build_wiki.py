@@ -18,11 +18,11 @@ def safe_name(title: str) -> str:
 
 
 def link_entity(name: str, kind: str) -> str:
-    return f"[{name}](entities/{kind}/{safe_name(name)}.md)"
+    return f"[{name}](entities/{kind}/{safe_name(name)})"
 
 
 def link_topic(keyword: str) -> str:
-    return f"[{keyword}](topics/{safe_name(keyword)}.md)"
+    return f"[{keyword}](topics/{safe_name(keyword)})"
 
 
 def info_box(entry: Dict, url: str) -> List[str]:
@@ -56,7 +56,7 @@ def build_backlinks(entry: Dict, entity_map: Dict[str, Dict[str, List[Dict]]], t
         return []
     lines = ["## Referenced by", ""]
     for ref in sorted(referenced):
-        lines.append(f"- [{title_map.get(ref, ref)}]({name_map.get(ref, safe_name(ref) + '.md')})")
+        lines.append(f"- [{title_map.get(ref, ref)}]({name_map.get(ref, safe_name(ref))})")
     lines.append("")
     return lines
 
@@ -171,7 +171,7 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
         vid = entry["video_id"]
         if only and vid != only:
             continue
-        name_map[vid] = f"{safe_name(entry.get('title', vid))}.md"
+        name_map[vid] = safe_name(entry.get('title', vid))
         title_map[vid] = entry.get('title', vid)
         for kind in entity_map:
             for name in entry.get(kind, []):
@@ -184,7 +184,7 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
     for entry in filtered:
         vid = entry["video_id"]
         content = page_content(entry, entity_map, topic_map, name_map, title_map)
-        page_file = out_dir / name_map[vid]
+        page_file = out_dir / f"{name_map[vid]}.md"
         page_file.write_text(content)
         rows.append(entry)
 
