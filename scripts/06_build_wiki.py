@@ -208,6 +208,14 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
         )
     (out_dir / "Home.md").write_text("\n".join(home_lines) + "\n")
 
+    sidebar_lines = ["## Videos", "- [Home](Home)", ""]
+    for r in rows:
+        title = r.get("title", r["video_id"])
+        filename = name_map[r["video_id"]]
+        sidebar_lines.append(f"- [{title}]({filename})")
+    sidebar_lines.append("")
+    (out_dir / "_Sidebar.md").write_text("\n".join(sidebar_lines))
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
