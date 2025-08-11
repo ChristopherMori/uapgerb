@@ -8,6 +8,8 @@
 !/data/**
 !/scripts/
 !/scripts/**
+!/.github/
+!/.github/**
 # Ignore Python cache
 scripts/**/__pycache__/
 scripts/**/__pycache__/**
