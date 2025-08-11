@@ -44,6 +44,16 @@ def load_segments(raw_file: Path) -> List[Dict[str, float | str]]:
             start = float(item.get("start", 0))
             dur = float(item.get("duration", 0))
             segments.append({"start": start, "end": start + dur, "text": item.get("text", "")})
+    elif ext == ".tsv":
+        with raw_file.open(newline="") as f:
+            reader = csv.DictReader(f, delimiter="\t")
+            for row in reader:
+                try:
+                    start = float(row.get("start", 0)) / 1000.0
+                    end = float(row.get("end", 0)) / 1000.0
+                except (TypeError, ValueError):
+                    continue
+                segments.append({"start": start, "end": end, "text": row.get("text", "")})
     else:
         raise ValueError(f"Unsupported extension: {raw_file}")
     return segments
