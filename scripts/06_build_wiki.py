@@ -74,7 +74,7 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
         keywords = ', '.join(r.get('keywords_top', [])[:5])
         years = f"{r.get('earliest','')}–{r.get('latest','')}" if r.get('earliest') else ""
         home_lines.append(f"| [{title}]({filename}) | {duration} | {r.get('words','')} | {r.get('wpm','')} | {r.get('fk_grade','')} | {keywords} | {years} |")
-    (out_dir / "_Home.md").write_text("\n".join(home_lines) + "\n")
+    (out_dir / "Home.md").write_text("\n".join(home_lines) + "\n")
 
 
 def main() -> None:
