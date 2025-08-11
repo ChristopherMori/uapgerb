@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
+import argparse
 import datetime, time, random, re
 from pathlib import Path
 from yt_dlp import YoutubeDL
 from youtube_transcript_api import YouTubeTranscriptApi, NoTranscriptFound, TranscriptsDisabled
 import frontmatter, slugify
 
-HANDLE_OR_URL = "https://www.youtube.com/@UAPGerb"
-OUT_DIR = Path("docs/transcripts")
-OUT_DIR.mkdir(parents=True, exist_ok=True)
+DEFAULT_CHANNEL = "https://www.youtube.com/@UAPGerb"
+DEFAULT_OUT_DIR = Path("docs/transcripts")
 
 def get_channel_id(handle_or_url: str) -> str:
     with YoutubeDL({'quiet': True, 'extract_flat': True, 'dump_single_json': True}) as ydl:
@@ -65,12 +65,12 @@ def best_effort_transcript(video_id: str, prefer_langs=("en",)):
                 continue
         return "*Transcript fetch error – will retry later*"
 
-def write_page(entry) -> bool:
+def write_page(entry, out_dir: Path) -> bool:
     vid   = entry["id"]
     title = entry.get("title") or vid
     date  = safe_date(entry)
     slug  = f"{date}--{slugify.slugify(title, lowercase=True)[:60]}--{vid}.md"
-    path  = OUT_DIR / slug
+    path  = out_dir / slug
 
     body = best_effort_transcript(vid)
 
@@ -96,14 +96,27 @@ def write_page(entry) -> bool:
     print("Saved", path.name)
     return True
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--channel", default=DEFAULT_CHANNEL, help="YouTube channel handle or URL")
+    parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUT_DIR, help="Directory to store transcripts")
+    parser.add_argument("--max-videos", type=int, default=None, help="Maximum number of videos to sync")
+    return parser.parse_args()
+
 def main():
-    cid = get_channel_id(HANDLE_OR_URL)
+    args = parse_args()
+    out_dir = args.output_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    cid = get_channel_id(args.channel)
     entries = list_uploads_entries(cid)
+    if args.max_videos is not None:
+        entries = entries[:args.max_videos]
     changed = False
     for e in entries:
         if not e.get("id") or e.get("_type") == "url":
             continue
-        changed |= write_page(e)
+        changed |= write_page(e, out_dir)
     print("Done. Changed =", changed)
 
 if __name__ == "__main__":
