@@ -196,7 +196,7 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
         page_file.write_text(content)
         rows.append(entry)
 
-    topic_names = build_entity_pages(entity_map, topic_map, out_dir, name_map, title_map)
+    build_entity_pages(entity_map, topic_map, out_dir, name_map, title_map)
 
     rows.sort(key=lambda x: x.get("title", ""))
 
@@ -206,10 +206,6 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
         title = r.get("title", r["video_id"])
         filename = name_map[r["video_id"]]
         sidebar_lines.append(f"- [{title}]({filename})")
-    if topic_names:
-        sidebar_lines.extend(["", "## Topics", ""])
-        for kw in sorted(topic_names):
-            sidebar_lines.append(f"- [{kw}]({safe_name(kw)})")
     sidebar_lines.append("")
     (out_dir / "_Sidebar.md").write_text("\n".join(sidebar_lines))
 
