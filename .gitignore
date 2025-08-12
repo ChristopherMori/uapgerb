@@ -1,15 +1,19 @@
-# Ignore everything by default
-*
-# Allow these paths
-!.gitignore
-!Makefile
-!requirements.txt
-!/data/
-!/data/**
-!/scripts/
-!/scripts/**
-!/.github/
-!/.github/**
-# Ignore Python cache
-scripts/**/__pycache__/
-scripts/**/__pycache__/**
+# Build artifacts and caches
+*.pyc
+__pycache__/
+.DS_Store
+docs/**/.DS_Store
+
+# Local scratch
+.codex/
+.tmp/
+
+# Optional media staging
+/audio/
+/outputs/
+
+# Raw dumps you do not want to publish
+/transcripts/*/*.raw.*
+
+# Node or other tooling if you add it later
+node_modules/
