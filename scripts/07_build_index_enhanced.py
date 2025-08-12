@@ -22,27 +22,15 @@ def safe_name(title: str) -> str:
 def build_index_page(index_path: Path, out_dir: Path) -> None:
     entries = json.loads(index_path.read_text())
     rows = sorted(entries, key=lambda x: x.get('title', ''))
-    years = sorted({(e.get('date') or '')[:4] for e in rows if e.get('date')})
     lines = [
         '# Index',
         '',
         'Status icons: 🆕 recent · ⚠️ missing summary · ❗ missing transcript',
         '',
-        '<input id="search" type="text" placeholder="Search by title or keyword"/>'
-    ]
-    if years:
-        opts = ''.join(f"<option value='{y}'>{y}</option>" for y in years)
-        lines.extend([
-            '<label for="year-filter">Year:</label> ',
-            f'<select id="year-filter"><option value="">All</option>{opts}</select>',
-            ''
-        ])
-    lines.extend([
-        '<table id="index-table" class="sortable">',
+        '<table id="index-table">',
         '<thead><tr><th>Title</th><th>Year</th><th>Duration</th><th>Words</th><th>WPM</th><th>FK</th><th>Top keywords</th><th>First year–Last year</th><th>Status</th></tr></thead>',
         '<tbody>'
-    ])
-    search_data = []
+    ]
     for e in rows:
         vid = e['video_id']
         title = e.get('title', vid)
@@ -64,13 +52,12 @@ def build_index_page(index_path: Path, out_dir: Path) -> None:
             except ValueError:
                 pass
         lines.append(
-            "<tr data-id='{id}' data-year='{year}'><td><a href='{file}'>{title}</a></td>"
+            "<tr><td><a href='{file}'>{title}</a></td>"
             "<td>{year}</td><td>{dur}</td><td>{words}</td><td>{wpm}</td><td>{fk}</td>"
             "<td>{kw}</td><td>{yrs}</td><td>{st}</td></tr>".format(
-                id=html.escape(vid),
-                year=html.escape(year),
                 file=html.escape(safe_name(e.get('title', vid))),
                 title=html.escape(title),
+                year=html.escape(year),
                 dur=html.escape(duration),
                 words=html.escape(e.get('words', '')),
                 wpm=html.escape(e.get('wpm', '')),
@@ -80,33 +67,7 @@ def build_index_page(index_path: Path, out_dir: Path) -> None:
                 st=html.escape(' '.join(status))
             )
         )
-        search_data.append({'id': vid, 'title': title, 'keywords': ' '.join(kw_list)})
-    lines.extend([
-        '</tbody></table>',
-        '<script id="search-data" type="application/json">' + json.dumps(search_data) + '</script>',
-        '<script src="https://cdn.jsdelivr.net/npm/lunr@2.3.9/lunr.min.js"></script>',
-        '<script src="https://www.kryogenix.org/code/browser/sorttable/sorttable.js"></script>',
-        '<script>',
-        "const searchData = JSON.parse(document.getElementById('search-data').textContent);",
-        "const idx = lunr(function(){this.ref('id');this.field('title');this.field('keywords');searchData.forEach(d=>this.add(d));});",
-        "const tbody = document.querySelector('#index-table tbody');",
-        "const searchInput = document.getElementById('search');",
-        "const yearFilter = document.getElementById('year-filter');",
-        "function apply(){",
-        "  const q = searchInput.value;",
-        "  const y = yearFilter ? yearFilter.value : '';",
-        "  let ids = null;",
-        "  if(q){const res = idx.search(q);ids = new Set(res.map(r=>r.ref));}",
-        "  tbody.querySelectorAll('tr').forEach(tr=>{",
-        "    const m1 = !ids || ids.has(tr.dataset.id);",
-        "    const m2 = !y || tr.dataset.year == y;",
-        "    tr.style.display = m1 && m2 ? '' : 'none';",
-        "  });",
-        "}",
-        "searchInput.addEventListener('input', apply);",
-        "if(yearFilter){yearFilter.addEventListener('change', apply);}",
-        '</script>'
-    ])
+    lines.append('</tbody></table>')
     out_dir.mkdir(exist_ok=True)
     (out_dir / 'Home.md').write_text('\n'.join(lines) + '\n')
 
