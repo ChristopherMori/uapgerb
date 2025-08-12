@@ -22,7 +22,7 @@ def link_entity(name: str, kind: str) -> str:
 
 
 def link_topic(keyword: str) -> str:
-    return f"[{keyword}](topics/{safe_name(keyword)})"
+    return f"[{keyword}]({safe_name(keyword)})"
 
 
 def info_box(entry: Dict, url: str) -> List[str]:
@@ -163,7 +163,7 @@ def build_entity_pages(entity_map: Dict[str, Dict[str, List[Dict]]], topic_map: 
     if topic_names:
         index_lines = ["# Topics", "", "List of keywords:", ""]
         for kw in sorted(topic_names):
-            index_lines.append(f"- [{kw}](topics/{safe_name(kw)})")
+            index_lines.append(f"- [{kw}]({safe_name(kw)})")
         (out_dir / "Topics.md").write_text("\n".join(index_lines) + "\n")
 
     return topic_names
@@ -226,7 +226,7 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
     if topic_names:
         sidebar_lines.extend(["", "## Topics", ""])
         for kw in sorted(topic_names):
-            sidebar_lines.append(f"- [{kw}](topics/{safe_name(kw)})")
+            sidebar_lines.append(f"- [{kw}]({safe_name(kw)})")
     sidebar_lines.append("")
     (out_dir / "_Sidebar.md").write_text("\n".join(sidebar_lines))
 
