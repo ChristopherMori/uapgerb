@@ -146,7 +146,15 @@ def build_entity_pages(entity_map: Dict[str, Dict[str, List[Dict]]], topic_map: 
             lines = [f"# {name}", "", "Referenced in:", ""]
             for e in sorted(entries, key=lambda x: x.get("title", x["video_id"])):
                 vid = e["video_id"]
-                lines.append(f"- [{title_map.get(vid, vid)}]({name_map[vid]})")
+                # entity pages live under ``entities/<kind>/`` two levels below the
+                # main video pages.  When linking back to the videos we need to
+                # escape those directories, otherwise GitHub resolves the links
+                # relative to the entity page (e.g. ``entities/people/<video>``)
+                # and users end up at ``.../entities``.  Use ``../../`` so the
+                # hyperlinks correctly point to the root-level video pages.
+                lines.append(
+                    f"- [{title_map.get(vid, vid)}](../../{name_map[vid]})"
+                )
             (kind_dir / f"{safe_name(name)}.md").write_text("\n".join(lines) + "\n")
 
     topic_names: List[str] = []
