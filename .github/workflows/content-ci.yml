@@ -1,0 +1,48 @@
+name: Content CI
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  validate-and-generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install jsonschema
+      - name: Validate schema
+        run: python scripts/validate_schema.py
+      - name: Generate content
+        run: |
+          python scripts/scan_transcripts.py
+          python scripts/generate_video_pages.py
+          python scripts/build_entities.py
+      - name: Ensure generated files are committed
+        run: |
+          git diff --exit-code || (echo "::error::Run the generators and commit results"; exit 1)
+
+  build:
+    runs-on: ubuntu-latest
+    needs: validate-and-generate
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+      - run: npm ci
+      - run: npm run build
