@@ -148,17 +148,14 @@ def build_entity_pages(entity_map: Dict[str, Dict[str, List[Dict]]], topic_map: 
                 lines.append(f"- [{title_map.get(vid, vid)}]({name_map[vid]})")
             (kind_dir / f"{safe_name(name)}.md").write_text("\n".join(lines) + "\n")
 
-    topics_dir = out_dir / "topics"
     topic_names: List[str] = []
-    if topic_map:
-        topics_dir.mkdir(parents=True, exist_ok=True)
     for kw, entries in sorted(topic_map.items()):
         topic_names.append(kw)
         lines = [f"# {kw}", "", "Referenced in:", ""]
         for e in sorted(entries, key=lambda x: x.get("title", x["video_id"])):
             vid = e["video_id"]
             lines.append(f"- [{title_map.get(vid, vid)}]({name_map[vid]})")
-        (topics_dir / f"{safe_name(kw)}.md").write_text("\n".join(lines) + "\n")
+        (out_dir / f"{safe_name(kw)}.md").write_text("\n".join(lines) + "\n")
 
     if topic_names:
         index_lines = ["# Topics", "", "List of keywords:", ""]
