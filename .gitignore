@@ -17,3 +17,8 @@ docs/**/.DS_Store
 
 # Node or other tooling if you add it later
 node_modules/
+.docusaurus/
+build/
+
+# Ignore Docusaurus image assets to avoid binary files in patch-based PRs
+static/img/
