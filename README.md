@@ -262,3 +262,11 @@ Get-ChildItem audio\*.m4a | ForEach-Object {
 
 * **Channel‑wide HTML report** (43 items, embed codes): used to confirm video count and provide human‑readable linking.&#x20;
 * **Complete JSON catalog** (schema and fields): used as the programmatic map for `video_id`‑to‑file mapping and downstream joins.&#x20;
+
+## Enhanced index page
+
+Run `python scripts/07_build_index_enhanced.py` after generating wiki pages to overwrite `wiki_out/Home.md` with a searchable, sortable table that highlights new uploads and missing data.
+
+## Keyword refinement
+
+Keywords are extracted with RAKE to capture multi‑word phrases. Synonyms can be normalized via `data/keyword_synonyms.json` so that variants like “uap” and “ufo” point to the same topic page. To curate results for a specific video, edit `data/manual_keywords.json` and add an entry with `add`/`remove` lists.

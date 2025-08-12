@@ -1,0 +1,6 @@
+{
+  "example_video_id": {
+    "add": ["extra topic"],
+    "remove": ["old keyword"]
+  }
+}

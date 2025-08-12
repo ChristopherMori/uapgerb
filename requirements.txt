@@ -5,3 +5,4 @@ pysrt
 textstat
 pandas
 scikit-learn
+rake-nltk
