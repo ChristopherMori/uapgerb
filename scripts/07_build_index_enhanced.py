@@ -1,7 +1,6 @@
 import json
 import html
 import re
-from datetime import datetime, timedelta
 from pathlib import Path
 
 def to_hms(seconds: float) -> str:
@@ -25,46 +24,24 @@ def build_index_page(index_path: Path, out_dir: Path) -> None:
     lines = [
         '# Index',
         '',
-        'Status icons: 🆕 recent · ⚠️ missing summary · ❗ missing transcript',
-        '',
         '<table id="index-table">',
-        '<thead><tr><th>Title</th><th>Year</th><th>Duration</th><th>Words</th><th>WPM</th><th>FK</th><th>Top keywords</th><th>First year–Last year</th><th>Status</th></tr></thead>',
+        '<thead><tr><th>Title</th><th>Date</th><th>Duration</th><th>Description</th></tr></thead>',
         '<tbody>'
     ]
     for e in rows:
         vid = e['video_id']
         title = e.get('title', vid)
-        duration = to_hms(e.get('duration_covered', 0))
-        kw_list = e.get('keywords_top', [])
-        kw = ', '.join(kw_list[:5])
-        yrs = f"{e.get('earliest','')}–{e.get('latest','')}" if e.get('earliest') else ''
-        upload = e.get('date') or ''
-        year = upload[:4] if upload else ''
-        status = []
-        if not Path(f'transcripts/{vid}/{vid}.clean.md').exists():
-            status.append('❗')
-        if not e.get('summary'):
-            status.append('⚠️')
-        if upload:
-            try:
-                if datetime.now() - datetime.fromisoformat(upload) < timedelta(days=30):
-                    status.append('🆕')
-            except ValueError:
-                pass
+        duration = e.get('duration_covered')
+        duration = to_hms(duration) if duration else ''
+        upload = e.get('date', '')
+        desc = e.get('summary', '') or e.get('description', '')
         lines.append(
-            "<tr><td><a href='{file}'>{title}</a></td>"
-            "<td>{year}</td><td>{dur}</td><td>{words}</td><td>{wpm}</td><td>{fk}</td>"
-            "<td>{kw}</td><td>{yrs}</td><td>{st}</td></tr>".format(
+            "<tr><td><a href='{file}'>{title}</a></td><td>{date}</td><td>{dur}</td><td>{desc}</td></tr>".format(
                 file=html.escape(safe_name(e.get('title', vid))),
                 title=html.escape(title),
-                year=html.escape(year),
+                date=html.escape(upload),
                 dur=html.escape(duration),
-                words=html.escape(e.get('words', '')),
-                wpm=html.escape(e.get('wpm', '')),
-                fk=html.escape(e.get('fk_grade', '')),
-                kw=html.escape(kw),
-                yrs=html.escape(yrs),
-                st=html.escape(' '.join(status))
+                desc=html.escape(desc)
             )
         )
     lines.append('</tbody></table>')
