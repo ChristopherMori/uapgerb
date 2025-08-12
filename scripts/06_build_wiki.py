@@ -7,6 +7,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List
+import subprocess
 
 from utils.timecode import to_hms
 
@@ -198,24 +199,9 @@ def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
     topic_names = build_entity_pages(entity_map, topic_map, out_dir, name_map, title_map)
 
     rows.sort(key=lambda x: x.get("title", ""))
-    home_lines = [
-        "# Index",
-        "",
-        "| Title | Duration | Words | WPM | FK | Top keywords | First year–Last year |",
-        "|---|---|---|---|---|---|---|",
-    ]
-    for r in rows:
-        title = r.get("title", r["video_id"])
-        filename = name_map[r["video_id"]]
-        duration = to_hms(float(r.get("duration_covered", 0)))
-        keywords = ", ".join(r.get("keywords_top", [])[:5])
-        years = f"{r.get('earliest','')}–{r.get('latest','')}" if r.get("earliest") else ""
-        home_lines.append(
-            f"| [{title}]({filename}) | {duration} | {r.get('words','')} | {r.get('wpm','')} | {r.get('fk_grade','')} | {keywords} | {years} |"
-        )
-    (out_dir / "Home.md").write_text("\n".join(home_lines) + "\n")
 
     sidebar_lines = ["## Videos", "- [Home](Home)", ""]
+
     for r in rows:
         title = r.get("title", r["video_id"])
         filename = name_map[r["video_id"]]
@@ -233,6 +219,8 @@ def main() -> None:
     parser.add_argument("--only")
     args = parser.parse_args()
     build_pages(Path("data/transcripts_index.json"), Path("wiki_out"), args.only)
+    script_dir = Path(__file__).parent
+    subprocess.run(["python", str(script_dir / "07_build_index_enhanced.py")], check=True)
 
 
 if __name__ == "__main__":

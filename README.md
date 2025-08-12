@@ -265,4 +265,4 @@ Get-ChildItem audio\*.m4a | ForEach-Object {
 
 ## Enhanced index page
 
-Run `python scripts/07_build_index_enhanced.py` after generating wiki pages to overwrite `wiki_out/Home.md` with a searchable, sortable table that highlights new uploads and missing data.
+Running `python scripts/06_build_wiki.py` (or `make wiki`) now writes `wiki_out/Home.md` with a searchable, sortable table that highlights new uploads and missing data.
