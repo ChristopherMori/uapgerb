@@ -1,5 +1,6 @@
 import json
 import html
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -10,6 +11,13 @@ def to_hms(seconds: float) -> str:
     if h:
         return f"{h:d}:{m:02d}:{s:02d}"
     return f"{m:d}:{s:02d}"
+
+SAFE_RE = re.compile(r"[^A-Za-z0-9_-]+")
+
+
+def safe_name(title: str) -> str:
+    return SAFE_RE.sub("_", title).strip("_")
+
 
 def build_index_page(index_path: Path, out_dir: Path) -> None:
     entries = json.loads(index_path.read_text())
@@ -61,7 +69,7 @@ def build_index_page(index_path: Path, out_dir: Path) -> None:
             "<td>{kw}</td><td>{yrs}</td><td>{st}</td></tr>".format(
                 id=html.escape(vid),
                 year=html.escape(year),
-                file=html.escape(e.get('title', vid).replace(' ', '_')),
+                file=html.escape(safe_name(e.get('title', vid))),
                 title=html.escape(title),
                 dur=html.escape(duration),
                 words=html.escape(e.get('words', '')),
@@ -75,10 +83,11 @@ def build_index_page(index_path: Path, out_dir: Path) -> None:
         search_data.append({'id': vid, 'title': title, 'keywords': ' '.join(kw_list)})
     lines.extend([
         '</tbody></table>',
+        '<script id="search-data" type="application/json">' + json.dumps(search_data) + '</script>',
         '<script src="https://cdn.jsdelivr.net/npm/lunr@2.3.9/lunr.min.js"></script>',
         '<script src="https://www.kryogenix.org/code/browser/sorttable/sorttable.js"></script>',
         '<script>',
-        f"const searchData = {json.dumps(search_data)};",
+        "const searchData = JSON.parse(document.getElementById('search-data').textContent);",
         "const idx = lunr(function(){this.ref('id');this.field('title');this.field('keywords');searchData.forEach(d=>this.add(d));});",
         "const tbody = document.querySelector('#index-table tbody');",
         "const searchInput = document.getElementById('search');",
