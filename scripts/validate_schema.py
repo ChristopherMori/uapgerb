@@ -26,12 +26,14 @@ def main():
             print(f"Schema error at {list(e.path)}: {e.message}", file=sys.stderr)
         sys.exit(1)
 
+    items = data.get("videos", [])
+
     # Custom validations
     ids = set()
     slugs = set()
     tag_ns_re = re.compile(r"^(person|place|topic):[a-z0-9-]+$")
 
-    for i, item in enumerate(data):
+    for i, item in enumerate(items):
         vid = item["id"]
         slug = item["slug"]
         if vid in ids:

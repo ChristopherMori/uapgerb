@@ -19,7 +19,8 @@ def safe_name(title: str) -> str:
 
 
 def build_index_page(index_path: Path, out_dir: Path) -> None:
-    entries = json.loads(index_path.read_text())
+    data = json.loads(index_path.read_text())
+    entries = data.get("videos", data)
     rows = sorted(entries, key=lambda x: x.get('title', ''))
     lines = [
         '# Index',

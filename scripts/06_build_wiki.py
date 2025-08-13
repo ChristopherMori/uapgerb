@@ -176,7 +176,8 @@ def build_entity_pages(entity_map: Dict[str, Dict[str, List[Dict]]], topic_map: 
 
 
 def build_pages(index: Path, out_dir: Path, only: str | None = None) -> None:
-    entries = json.loads(index.read_text())
+    data = json.loads(index.read_text())
+    entries = data.get("videos", data)
     out_dir.mkdir(exist_ok=True)
     entity_map: Dict[str, Dict[str, List[Dict]]] = {k: defaultdict(list) for k in ("people", "orgs", "places")}
     topic_map: Dict[str, List[Dict]] = defaultdict(list)

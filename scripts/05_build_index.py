@@ -38,7 +38,7 @@ def main() -> None:
             entry.update({"years": claims[vid]["years"], "earliest": claims[vid]["earliest"], "latest": claims[vid]["latest"]})
             entry["claims"] = claims[vid]["claims"]
         index.append(entry)
-    Path("data/transcripts_index.json").write_text(json.dumps(index, indent=2))
+    Path("data/transcripts_index.json").write_text(json.dumps({"videos": index}, indent=2))
 
 
 if __name__ == "__main__":

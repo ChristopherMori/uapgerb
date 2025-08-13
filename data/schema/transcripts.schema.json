@@ -1,37 +1,44 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Transcripts Index",
-  "type": "array",
-  "items": {
-    "type": "object",
-    "required": ["id", "slug", "title", "sources"],
-    "properties": {
-      "id": {"type": "string", "minLength": 1},
-      "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
-      "title": {"type": "string", "minLength": 1},
-      "summary": {"type": "string"},
-      "published_at": {"type": "string"},
-      "duration": {"type": "string"},
-      "sources": {
+  "type": "object",
+  "properties": {
+    "videos": {
+      "type": "array",
+      "items": {
         "type": "object",
+        "required": ["id", "slug", "title", "sources"],
         "properties": {
-          "youtube": {"type": "string"},
-          "transcript_txt": {"type": "string"},
-          "transcript_vtt": {"type": "string"}
-        },
-        "required": ["transcript_txt"]
-      },
-      "entities": {
-        "type": "object",
-        "properties": {
-          "people": {"type": "array", "items": {"type": "string"}},
-          "places": {"type": "array", "items": {"type": "string"}},
-          "topics": {"type": "array", "items": {"type": "string"}}
+          "id": {"type": "string", "minLength": 1},
+          "slug": {"type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+          "title": {"type": "string", "minLength": 1},
+          "summary": {"type": "string"},
+          "published_at": {"type": "string"},
+          "duration": {"type": "string"},
+          "sources": {
+            "type": "object",
+            "properties": {
+              "youtube": {"type": "string"},
+              "transcript_txt": {"type": "string"},
+              "transcript_vtt": {"type": "string"}
+            },
+            "required": ["transcript_txt"]
+          },
+          "entities": {
+            "type": "object",
+            "properties": {
+              "people": {"type": "array", "items": {"type": "string"}},
+              "places": {"type": "array", "items": {"type": "string"}},
+              "topics": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": false
+          },
+          "tags": {"type": "array", "items": {"type": "string"}}
         },
         "additionalProperties": false
-      },
-      "tags": {"type": "array", "items": {"type": "string"}}
-    },
-    "additionalProperties": false
-  }
+      }
+    }
+  },
+  "required": ["videos"],
+  "additionalProperties": false
 }

@@ -23,9 +23,10 @@ def ensure_served_copy(src: pathlib.Path, video_id: str) -> pathlib.Path:
 
 def main():
     data = json.loads(INDEX.read_text(encoding="utf-8"))
+    videos = data.get("videos", data)
     changed = False
 
-    for item in data:
+    for item in videos:
         vid = item["id"]
         src_txt = ROOT / item["sources"]["transcript_txt"]
         text = src_txt.read_text(encoding="utf-8", errors="ignore")
