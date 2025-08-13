@@ -40,9 +40,10 @@ def write_entity(etype: str, slug: str, items: list):
 
 def main():
     data = json.loads(INDEX.read_text(encoding="utf-8"))
+    videos = data.get("videos", data)
 
     buckets = {"people": {}, "places": {}, "topics": {}}
-    for item in data:
+    for item in videos:
         title = item["title"].replace("\n", " ").strip()
         vslug = item["slug"]
         ents = item.get("entities", {})

@@ -96,7 +96,8 @@ def build_video_page(item: dict, transcript_text: str) -> str:
 
 def main():
     data = json.loads(INDEX.read_text(encoding="utf-8"))
-    for item in data:
+    videos = data.get("videos", data)
+    for item in videos:
         txt_path = ROOT / item["sources"]["transcript_txt"]
         t = txt_path.read_text(encoding="utf-8", errors="ignore")
         out = build_video_page(item, t)

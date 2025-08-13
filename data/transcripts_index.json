@@ -1,22 +1,24 @@
-[
-  {
-    "id": "yt-DcvuglS7ps4",
-    "slug": "us-special-forces-confession",
-    "title": "US Special Forces Confession - I Recovered Crashed UFOs: Fact or Fiction?",
-    "published_at": "unknown",
-    "duration": "unknown",
-    "sources": {
-      "youtube": "https://www.youtube.com/watch?v=DcvuglS7ps4",
-      "transcript_txt": "transcripts/yt-DcvuglS7ps4/clean.txt",
-      "transcript_vtt": "transcripts/yt-DcvuglS7ps4/original.vtt",
-      "transcript_txt_served": "transcripts/yt-DcvuglS7ps4/clean.txt",
-      "transcript_vtt_served": "transcripts/yt-DcvuglS7ps4/original.vtt"
-    },
-    "entities": {
-      "people": [],
-      "places": [],
-      "topics": []
-    },
-    "tags": []
-  }
-]
+{
+  "videos": [
+    {
+      "id": "yt-DcvuglS7ps4",
+      "slug": "us-special-forces-confession",
+      "title": "US Special Forces Confession - I Recovered Crashed UFOs: Fact or Fiction?",
+      "published_at": "unknown",
+      "duration": "unknown",
+      "sources": {
+        "youtube": "https://www.youtube.com/watch?v=DcvuglS7ps4",
+        "transcript_txt": "transcripts/yt-DcvuglS7ps4/clean.txt",
+        "transcript_vtt": "transcripts/yt-DcvuglS7ps4/original.vtt",
+        "transcript_txt_served": "transcripts/yt-DcvuglS7ps4/clean.txt",
+        "transcript_vtt_served": "transcripts/yt-DcvuglS7ps4/original.vtt"
+      },
+      "entities": {
+        "people": [],
+        "places": [],
+        "topics": []
+      },
+      "tags": []
+    }
+  ]
+}
