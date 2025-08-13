@@ -193,10 +193,11 @@ def build_video_pages(videos: List[Video]) -> Dict[str, List[Tuple[str, str]]]:
             index_for_entities[key].append((pf, v.title))
 
         # Front matter and body
+        escaped_title = v.title.replace('"', '\\"')
         fm = [
             "---",
             f"id: {v.id}",
-            f'title: "{v.title.replace("\"", "\\\"")}",'
+            f'title: "{escaped_title}",'
             f"published_at: {v.published_at or ''}",
             f"duration: {v.duration or ''}",
             f"tags: {v.tags!r}",
