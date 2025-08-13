@@ -31,8 +31,6 @@ duration: {duration}
 tags:
 {tags_yaml}---
 
-import Link from '@docusaurus/Link';
-
 # {title_heading}
 
 **Published:** {published_at} · **Duration:** {duration}
@@ -62,12 +60,12 @@ def build_video_page(item: dict, transcript_text: str) -> str:
     links = []
     yt = item.get("sources", {}).get("youtube")
     if yt:
-        links.append(f"- Link: <Link to=\"{yt}\">YouTube</Link>")
+        links.append(f"- [YouTube]({yt})")
     served_txt = item.get("sources", {}).get("transcript_txt_served", item["sources"]["transcript_txt"])
-    links.append(f"- Transcript: <Link to=\"/{served_txt}\">download .txt</Link>")
+    links.append(f"- Transcript: [download .txt](/{served_txt})")
     vtt = item.get("sources", {}).get("transcript_vtt_served") or item.get("sources", {}).get("transcript_vtt")
     if vtt:
-        links.append(f"- Captions: <Link to=\"/{vtt}\">.vtt</Link>")
+        links.append(f"- Captions: [.vtt](/{vtt})")
     links_block = "\n".join(links) if links else "- (no external links)"
 
     ent = ent_links(item.get("entities", {}))
